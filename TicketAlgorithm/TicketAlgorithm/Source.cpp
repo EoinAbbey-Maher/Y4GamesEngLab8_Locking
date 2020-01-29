@@ -7,85 +7,70 @@
 #include <string>
 #include <array>
 
-const static int n = 10;
 
-	int num, next = 1;
-	static std::array<int, n> m_entering;
-	static	std::array<int, n> m_ticket;
 
-	static std::mutex mtx;
+static const int n = 5;
+int number, next = 1;
+std::array<int, n> turn;
 
-	class criticalProcess : public std::thread
+int numOfThreads = 0;
+std::mutex mtx;
+
+void ticketAlgorithm()
+{
+	int i = numOfThreads++;
+
+	mtx.lock();
+	std::cout << "Thread" << i << std::endl;
+	mtx.unlock();
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+	while (true)
 	{
-		void lock(int t_pid)
+		turn[i] = number;
+		number++;
+
+		mtx.lock();
+		std::cout << "t" << i << "\t Turn: " << turn[i] << std::endl;
+		mtx.unlock();
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+		while(turn[i] != next)
 		{
-			m_entering[t_pid] = 1;
-
-			int max = 0;
-
-			for (int i = 0; i < n; i++)
-			{
-				int current = m_ticket[i];
-
-				if (current > max)
-				{
-					max = current;
-					std::cout << "Max: " + std::to_string(max) << std::endl;;
-				}
-			}
-			m_ticket[t_pid ] = 1 + max;
-			m_entering[t_pid] = 0;
-
-			for (int  i = 0; i < m_ticket.size(); i++)
-			{
-				if (i != t_pid)
-				{
-					while (m_entering[i] == 1)
-					{
-						std::this_thread::yield();
-					}
-
-					while (m_ticket[i] != 0 && (m_ticket[t_pid] > m_ticket[i] || (m_ticket[t_pid] == m_ticket[i] && t_pid > i)))
-					{
-						std::cout << "Thread Yield... " + std::to_string(m_entering[i]) << std::endl;;
-						std::this_thread::yield();
-					}
-				}
-			}
+			continue;
 		}
 
-		void unlock(int t_pid)
-		{
-			m_ticket[t_pid] = 0;
-		}
+		mtx.lock();
+		std::cout << "t" << i << "\t +Critical Section " << std::endl;
+		mtx.unlock();
 
-		//was trying to get lock to work
-		void run()
-		{
-			mtx.lock();
-			try
-			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(200));
-				std::cout << "Critical Section" << std::endl;;
-			}
-			catch (const std::exception&){}
+		std::cout << "Critical Section" + i << std::endl;
 
-			for (int i	= 0; i < m_ticket.size(); i++)
-			{
-				std::cout << "[" + std::to_string(m_ticket[i]) + "]" << std::endl;
-			}
+		next++;
 
-		}
-	};
+		mtx.lock();
+		std::cout << "t" << i << "\t Next: " << next << std::endl;	
+		mtx.unlock();
 
-
+	}
+}
 
 int main(void)
 {
+	for (int i = 0; i < turn.size(); i++)
+	{
+		turn[i] = 0;
+	}
 
-	std::thread ticket(criticalProcess);
-
-
+	std::thread ticket1(ticketAlgorithm);
+	std::thread ticket2(ticketAlgorithm);
+	
+	ticket1.join();
+	ticket2.join();
+	
+	std::cin.get();
 	return 0;
 }
 
