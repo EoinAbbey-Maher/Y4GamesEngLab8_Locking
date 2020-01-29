@@ -1,0 +1,80 @@
+import java.util.*;
+
+public class Bakery{ public static int threads = 10;
+
+	public static java.util.concurrent.atomic.AtomicIntegerArray ticket = new java.util.concurrent.atomic.AtomicIntegerArray(threads);
+
+	public static java.util.concurrent.atomic.AtomicIntegerArray entering = new java.util.concurrent.atomic.AtomicIntegerArray(threads);
+
+	public static void main(String[] args) {
+	class CriticalProcess extends Thread{
+	
+		public void lock(int pid) {
+				entering.set(pid, 1);
+				int max = 0;
+
+				for (int i = 0; i < threads; i++) {
+					int current = ticket.get(i);
+
+					if (current > max)
+					{
+						max = current;
+						System.out.println("Max: " + max);
+					}
+				}
+
+				ticket.set(pid, 1 + max);
+				entering.set(pid, 0);
+
+				for (int i = 0; i < ticket.length(); ++i)
+				{
+					if (i != pid) {
+
+						while (entering.get(i) == 1) {
+							//System.out.println("Thread.yield()." + entering.get(i));
+							Thread.yield();
+						}
+
+						while (ticket.get(i) != 0 && ( ticket.get(pid) > ticket.get(i)  || (ticket.get(pid) == ticket.get(i) && pid > i)))
+						{
+							//System.out.println("Thread.yield()...." + entering.get(i));
+							Thread.yield();
+						}
+					}
+				}
+
+		}
+
+		public void unlock(int pid) { ticket.set(pid, 0); }
+
+		public void run(){
+			while(true)
+			{
+				this.lock(Integer.decode(this.getName()));
+				try{
+					Thread.sleep(100);
+					System.out.println("Critical Section: " + this.getName());
+				}catch(Exception e){}
+
+				this.unlock(Integer.decode(this.getName()));
+				System.out.println("Non-Critical Section: " + this.getName());
+
+				for(int i = 0; i < ticket.length(); i++)
+				{
+					System.out.print("[" + ticket.get(i) + "]");
+				}
+				System.out.println();
+			}
+		}
+	}
+
+	CriticalProcess[] cs = new CriticalProcess[threads];
+
+	for(int i = 0; i < threads; i++) {
+		cs[i] = new CriticalProcess();
+		cs[i].setName("" + i);
+		cs[i].start();
+	}
+
+}
+}
