@@ -1,0 +1,3 @@
+Unsafe Thread code can allow a thread to access multiple pieces of data and change 
+them in an unsafe manner. To ensuree thread safety in this project we use Mutual 
+Exclusion(Mutices) to ensure an ordered approach to how data is accessed and modified.
